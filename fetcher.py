@@ -1,5 +1,4 @@
-import asyncio
-import httpx
+import requests
 import bs4
 import re
 
@@ -24,30 +23,34 @@ def title(url):
 
 # ------------------------------------------------------------------
 
-#Fetch function
-async def fetch(url: str) -> str:
-
-    headers = {
+HEADERS = {
         "User-Agent": "MyCrawlerBot/1.0 (contact: your-email@gmail.com) EducationalProject/Crawler"
-    }
-    
-    valid = is_valid_url(url)
-    if not valid:
+        }
+
+
+#Fetch function
+def fetch(session: requests.Session, url: str, retries: int = 3) -> str:
+    if not is_valid_url(url):
         raise ValueError(f"Invalid Wikipedia URL: '{url}'")
 
-    async with httpx.AsyncClient(headers=headers) as client:
-        response = await client.get(url)
+    for attempt in range(1, retries + 1):
+        try:
+            response = session.get(url, timeout=30)
+        except (requests.ConnectTimeout, requests.ReadTimeout):
+            if attempt == retries:
+                raise
+            time.sleep(2 * attempt)
+            continue
 
         if response.status_code == 429:
-            retry_after = int(response.headers.get("Retry-After", 5))
-            print(f"Rate limited. Waiting {retry_after} seconds...")
-            await asyncio.sleep(retry_after)
-            return await fetch(url)
+            time.sleep(int(response.headers.get("Retry-After", 5)))
+            continue
 
+        response.raise_for_status()
         return response.text
 
-async def parse(url: str) -> PageData:
-    html = await fetch(url)
+    raise RuntimeError(f"Gave up on {url} after {retries} attempts")
+def parse(html: str, url: str) -> PageData | None:
     soup = bs4.BeautifulSoup(html, "html.parser")
 
     first_p = None
@@ -59,8 +62,7 @@ async def parse(url: str) -> PageData:
             break
 
     if first_p is None:
-        print("No paragraph found")
-        return
+        return None
 
     text = first_p.get_text(" ", strip=True)
 
@@ -89,9 +91,17 @@ async def parse(url: str) -> PageData:
 
 
 #Test to check if it is working
-async def main():
+def main():
     url = "https://en.wikipedia.org/wiki/Dog"
-    page = await parse(url)
+    
+    with requests.Session() as session:
+        session.headers.update(HEADERS)
+        html = fetch(session, url)
+
+    page = parse(html, url)
+    if page is None:
+        print("No Paragraph Found")
+        return
    
    
     print(page.url)
@@ -101,5 +111,5 @@ async def main():
 
 
 
-
-asyncio.run(main())
+if __name__ == "__main__":
+    main()
