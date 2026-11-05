@@ -1,6 +1,7 @@
 import requests
 import bs4
 import re
+import time
 
 from urllib.parse import urljoin, urldefrag
 from config import PageData
@@ -50,6 +51,7 @@ def fetch(session: requests.Session, url: str, retries: int = 3) -> str:
         return response.text
 
     raise RuntimeError(f"Gave up on {url} after {retries} attempts")
+
 def parse(html: str, url: str) -> PageData | None:
     soup = bs4.BeautifulSoup(html, "html.parser")
 
@@ -92,7 +94,7 @@ def parse(html: str, url: str) -> PageData | None:
 
 #Test to check if it is working
 def main():
-    url = "https://en.wikipedia.org/wiki/Dog"
+    url = "https://en.wikipedia.org/wiki/Gray_wolf"
     
     with requests.Session() as session:
         session.headers.update(HEADERS)
