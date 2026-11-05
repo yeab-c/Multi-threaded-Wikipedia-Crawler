@@ -97,3 +97,37 @@ def rank_words(conn: sqlite3.Connection, word: str) -> None:
     for idx, (title, url, count, links, score) in enumerate(results, 1):
         print(f"{idx}. {title}, score {score}")
         print(f"   {url}")
+
+
+def words_per_page(conn: sqlite3.Connection) -> None:
+    with conn:
+        result = conn.execute(
+                """
+                SELECT p.title, SUM(w.count) AS total
+                FROM words w
+                JOIN pages p ON p.page_id = w.page_id
+                GROUP BY p.page_id
+                ORDER BY total DESC
+                """
+                ).fetchall()
+
+    for title, total in result:
+        print(f"{title}: {total}")
+
+
+def most_linked_pages(conn: sqlite3.Connection, limit: int = 3) -> None:
+    with conn:
+        result = conn.execute(
+                """
+                SELECT title, incoming_links
+                FROM pages
+                ORDER BY incoming_links DESC
+                LIMIT  ?
+                """,
+                (limit,),
+                ).fetchall()
+    
+    print("Most Mentioned Pages")
+    print("=" * 20)
+    for title, links in result:
+        print(f"{title}: {links}")
