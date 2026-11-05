@@ -59,7 +59,7 @@ def parse(html: str, url: str) -> PageData | None:
     for p in soup.select("#mw-content-text p"):
         for sup in p.select("sup"):
             sup.decompose()
-        if p.get_text(strip=True):
+        if len(p.get_text(" ", strip=True)) > 100:
             first_p = p
             break
 
